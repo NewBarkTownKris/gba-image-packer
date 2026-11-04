@@ -21,7 +21,11 @@ The first build targets devices such as the AYN Thor through Android's standard 
 
 Display IDs and resolutions are discovered at runtime. Android’s preferred presentation displays are considered first, followed by other public secondary displays exposed by dual-screen firmware. There are no fixed Thor display numbers, root requirements, vendor services or broad storage permissions. Android can refuse a presentation on a display currently used by the app's control task; the app keeps the inline comparison available when that happens.
 
-This is an initial alpha. Automated verification uses Android 13 and Android 15 emulators and real virtual-display surfaces at 1240 × 1080 and 1080 × 1240. Physical AYN Thor hardware has not been tested.
+This is an initial alpha. Automated verification uses Android 13 and Android 15 emulators and real virtual-display surfaces at 1240 × 1080 and 1080 × 1240. Both Android editions have also passed testing on a physical AYN Thor running Android 13: image import, conversion, ordering, ROM export and album restoration. The dual edition additionally passed checks of its actual second display, equal source/result panes, exact converted frame, selection changes, manual routing and inline fallback. The comparison recovered after sleeping and waking the Thor. Hardware-generated ROMs from both editions passed mGBA playback verification.
+
+The Thor’s lower display during hardware testing, showing generated sample images:
+
+![Source image and converted GBA frame on the Thor secondary display](screenshots/thor-comparison.png)
 
 ## Build
 
@@ -53,3 +57,5 @@ adb shell am instrument -w io.github.newbarktownkris.gbaimagepacker.dual.test/io
 ```
 
 Use a fresh app installation for the instrumentation, which imports three generated photos into an empty album. The virtual-display tests exercise Android's presentation behavior rather than any particular manufacturer's firmware.
+
+To test an actual secondary display instead of creating virtual test displays, add `-e physical true` to the instrumentation command. Both panels must be awake, and the test installation must have an empty album. The physical test imports generated images; do not run it against an album containing personal images.

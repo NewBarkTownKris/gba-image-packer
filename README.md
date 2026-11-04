@@ -40,7 +40,7 @@ The Android APK supports **Android 8.0 or later on ARM64 devices** and also incl
 
 All processing runs offline on the device. The app saves its editable album automatically and includes an option to export the example ROM. Imported copies are downsampled to at most 2048 pixels per side; source images are unchanged. See [Android instructions and source build setup](android/README.md) for details.
 
-A separate [dual-screen Android edition](android/dual-screen/README.md) is available as an initial alpha for devices with an independently addressable second display, including setups like the AYN Thor. The second display shows the imported image and its converted GBA result side by side. Physical Thor validation is still pending.
+A separate [dual-screen Android edition](android/dual-screen/README.md) is available as an initial alpha for devices with an independently addressable second display, including setups like the AYN Thor. The second display shows the imported image and its converted GBA result side by side. Both Android editions have been tested on a physical AYN Thor running Android 13.
 
 ### Linux (x86_64)
 

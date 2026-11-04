@@ -23,6 +23,10 @@ import java.util.concurrent.*;
 
 /** Renders real Presentation windows into secondary-display surfaces and checks their contents. */
 public final class DualSmokeInstrumentation extends SmokeInstrumentation {
+    private boolean physical;
+    @Override public void onCreate(android.os.Bundle arguments) {
+        physical=arguments!=null && "true".equals(arguments.getString("physical"));super.onCreate(arguments);
+    }
     @Override protected String artifactPrefix() { return "android-dual-smoke"; }
     private Object controller() { return field("dualPreview"); }
     private Object member(Object object,String name) {
@@ -80,7 +84,32 @@ public final class DualSmokeInstrumentation extends SmokeInstrumentation {
                 DisplayManager.VIRTUAL_DISPLAY_FLAG_PUBLIC|DisplayManager.VIRTUAL_DISPLAY_FLAG_PRESENTATION|DisplayManager.VIRTUAL_DISPLAY_FLAG_OWN_CONTENT_ONLY);
         });require(value[0]!=null,"Could not create a secondary display");return value[0];
     }
+    private void verifyPhysicalDisplay() throws Exception {
+        choice(-1);
+        waitUntil("No physical presentation display became available",() -> presentation()!=null && member(controller(),"sourceBitmap")!=null && presentation().getWindow().getDecorView().getWidth()>0);
+        int[] displayId={-1};
+        runOnMainSync(() -> {
+            Presentation shown=presentation();displayId[0]=shown.getDisplay().getDisplayId();
+            View root=shown.getWindow().getDecorView();ImageView source=root.findViewWithTag("dual-source-image"),result=root.findViewWithTag("dual-result-image");
+            require(source.getWidth()>0 && Math.abs(source.getWidth()-result.getWidth())<=1,"Physical preview panes are not equal width");
+            BitmapDrawable a=(BitmapDrawable)source.getDrawable(),b=(BitmapDrawable)result.getDrawable();
+            require(a!=null && b!=null && a.getBitmap()!=b.getBitmap(),"Physical source/result missing");
+            require(a.getBitmap().getWidth()==480 && b.getBitmap().getWidth()==240 && b.getBitmap().getHeight()==160,"Physical preview dimensions");
+            require(b.getBitmap().sameAs((Bitmap)field("currentPreview")),"Physical display result differs from converted GBA frame");
+            require(!b.getPaint().isFilterBitmap(),"Physical GBA preview blurred");
+            require(((View)member(controller(),"inline")).getVisibility()==View.GONE,"Physical display did not collapse inline preview");
+        });
+        runOnMainSync(() -> ((Spinner)field("selection")).setSelection(1));waitForIdleSync();
+        waitUntil("Physical preview selection did not update",() -> {
+            Bitmap source=(Bitmap)member(controller(),"sourceBitmap");return source!=null && source.getPixel(0,0)==0xff435117;
+        });
+        choice(-2);waitUntil("Physical inline-only fallback failed",() -> presentation()==null && ((View)member(controller(),"inline")).getVisibility()==View.VISIBLE);
+        choice(displayId[0]);waitUntil("Physical manual display routing failed",() -> presentation()!=null && presentation().getDisplay().getDisplayId()==displayId[0]);
+        choice(-1);
+        android.os.Bundle progress=new android.os.Bundle();progress.putString("stream","PASS: physical second display, equal source/result panes, exact GBA frame, selection changes, inline fallback and manual routing\n");sendStatus(0,progress);
+    }
     @Override protected void verifyAdditionalFeatures() throws Exception {
+        if(physical){verifyPhysicalDisplay();return;}
         ImageReader landscape=ImageReader.newInstance(1240,1080,PixelFormat.RGBA_8888,3);
         ImageReader portrait=null;VirtualDisplay virtual=null;
         try {
