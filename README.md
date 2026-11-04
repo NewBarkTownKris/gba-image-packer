@@ -4,6 +4,20 @@ Create Game Boy Advance ROMs that display your pictures individually or as a sli
 
 Download a package for Linux x86_64, macOS Apple Silicon, Windows x86_64, or Android from [Releases](https://github.com/NewBarkTownKris/gba-image-packer/releases). Every package includes `example.gba`, a ready-to-play example album.
 
+## Screenshots
+
+**Linux desktop app** — image collection, conversion settings, and source/GBA previews.
+
+<img src="docs/screenshots/linux-app.png" alt="GBA Image Packer running on Linux with source and converted image previews" width="900">
+
+**Generated GBA ROM in mGBA** — the included `example.gba`, captured at the GBA's native 240 × 160 resolution.
+
+<img src="docs/screenshots/gba-rom-mgba.png" alt="A photo of a rainbow displayed by the example GBA ROM running in mGBA" width="480">
+
+**Android app** — image selection and conversion preview on Android 15.
+
+<img src="docs/screenshots/android-app.png" alt="GBA Image Packer running on Android with an imported image and GBA conversion preview" width="320">
+
 ## Setup and installation
 
 The release packages are ready to run: you do not need Rust, Cargo, or a GBA compiler. Download the archive for your operating system from [Releases](https://github.com/NewBarkTownKris/gba-image-packer/releases), then follow the steps below. Every package includes a ready-to-play `example.gba` ROM.
