@@ -14,15 +14,21 @@ import java.util.*;
 
 /** Exercises the actual Activity and Rust library; document picker results are supplied by a monitor. */
 public class SmokeInstrumentation extends Instrumentation {
-    private Activity activity;
+    protected Activity activity;
     private Uri destination;
     private final ArrayList<Uri> sources = new ArrayList<>();
     @Override public void onCreate(Bundle args) { super.onCreate(args); start(); }
-    private void require(boolean value, String detail) { if (!value) throw new AssertionError(detail); }
-    private Object field(String name) {
-        try { Field f = activity.getClass().getDeclaredField(name); f.setAccessible(true); return f.get(activity); }
-        catch (Exception e) { throw new RuntimeException(e); }
+    protected void require(boolean value, String detail) { if (!value) throw new AssertionError(detail); }
+    protected Object field(String name) {
+        for (Class<?> type=activity.getClass(); type!=null; type=type.getSuperclass()) {
+            try { Field f=type.getDeclaredField(name); f.setAccessible(true); return f.get(activity); }
+            catch (NoSuchFieldException missing) { }
+            catch (Exception error) { throw new RuntimeException(error); }
+        }
+        throw new IllegalArgumentException("Missing activity field: "+name);
     }
+    protected void verifyAdditionalFeatures() throws Exception { }
+    protected String artifactPrefix() { return "android-smoke"; }
     private Button find(View v, String label) {
         if (v instanceof Button && label.contentEquals(((Button)v).getText())) return (Button)v;
         if (v instanceof ViewGroup) {
@@ -61,7 +67,7 @@ public class SmokeInstrumentation extends Instrumentation {
                 bitmap.setPixels(pixels,0,480,0,0,480,300);
                 try(OutputStream out=new FileOutputStream(file)){bitmap.compress(Bitmap.CompressFormat.PNG,100,out);} bitmap.recycle(); sources.add(Uri.fromFile(file));
             }
-            ContentValues values=new ContentValues(); values.put(MediaStore.Downloads.DISPLAY_NAME,"android-smoke.gba"); values.put(MediaStore.Downloads.MIME_TYPE,"application/octet-stream");
+            ContentValues values=new ContentValues(); values.put(MediaStore.Downloads.DISPLAY_NAME,artifactPrefix()+".gba"); values.put(MediaStore.Downloads.MIME_TYPE,"application/octet-stream");
             destination=context.getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI,values); require(destination!=null,"No save destination");
             addMonitor(new ActivityMonitor() {
                 @Override public ActivityResult onStartActivity(Intent intent) {
@@ -92,9 +98,10 @@ public class SmokeInstrumentation extends Instrumentation {
             // Close and reopen the Activity to verify the private album survives recreation.
             runOnMainSync(() -> activity.finish()); waitForIdleSync(); activity=startActivitySync(launch); waitForIdleSync();
             runOnMainSync(() -> require(((TextView)field("count")).getText().toString().startsWith("3 images"),"Album did not persist"));
+            verifyAdditionalFeatures();
             Bitmap screenshot=getUiAutomation().takeScreenshot();
             if (screenshot!=null) {
-                ContentValues imageValues=new ContentValues(); imageValues.put(MediaStore.Downloads.DISPLAY_NAME,"android-smoke.png"); imageValues.put(MediaStore.Downloads.MIME_TYPE,"image/png");
+                ContentValues imageValues=new ContentValues(); imageValues.put(MediaStore.Downloads.DISPLAY_NAME,artifactPrefix()+".png"); imageValues.put(MediaStore.Downloads.MIME_TYPE,"image/png");
                 Uri imageUri=context.getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI,imageValues);
                 try(OutputStream out=context.getContentResolver().openOutputStream(imageUri)){screenshot.compress(Bitmap.CompressFormat.PNG,100,out);} screenshot.recycle();
             }

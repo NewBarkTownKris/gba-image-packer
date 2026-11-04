@@ -40,6 +40,8 @@ The Android APK supports **Android 8.0 or later on ARM64 devices** and also incl
 
 All processing runs offline on the device. The app saves its editable album automatically and includes an option to export the example ROM. Imported copies are downsampled to at most 2048 pixels per side; source images are unchanged. See [Android instructions and source build setup](android/README.md) for details.
 
+A separate [dual-screen Android edition](android/dual-screen/README.md) is available as an initial alpha for devices with an independently addressable second display, including setups like the AYN Thor. The second display shows the imported image and its converted GBA result side by side. Physical Thor validation is still pending.
+
 ### Linux (x86_64)
 
 Use a 64-bit x86_64 Linux desktop with an X11 session or XWayland, OpenGL support, and the libraries below. The release is built on Ubuntu 22.04; Ubuntu 22.04 or newer, Debian 12 or newer, and current Arch/Fedora installations are suitable starting points. Older distributions may need a local source build because of their system library versions.

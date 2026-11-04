@@ -1,0 +1,5 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="io.github.newbarktownkris.gbaimagepacker.dual.test" android:versionCode="1" android:versionName="1.0">
+    <uses-sdk android:minSdkVersion="29" android:targetSdkVersion="36" />
+    <instrumentation android:name="io.github.newbarktownkris.gbaimagepacker.dualtest.DualSmokeInstrumentation" android:targetPackage="io.github.newbarktownkris.gbaimagepacker.dual" android:label="Dual display verification" />
+    <application android:label="GBA Packer Dual verification" />
+</manifest>

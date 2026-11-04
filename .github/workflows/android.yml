@@ -14,6 +14,10 @@ permissions:
   contents: read
 jobs:
   android:
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [33, 35]
     runs-on: ubuntu-22.04
     timeout-minutes: 30
     env:
@@ -37,12 +41,14 @@ jobs:
           echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
           echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
           yes | sdkmanager --licenses > /dev/null || true
-          sdkmanager 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0' 'ndk;28.2.13676358' 'emulator' 'system-images;android-35;google_apis;x86_64'
+          sdkmanager 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0' 'ndk;28.2.13676358' 'emulator' 'system-images;android-${{ matrix.api }};google_apis;x86_64'
           rustup target add aarch64-linux-android x86_64-linux-android
           sudo apt-get update
           sudo apt-get install -y libmgba-dev
       - name: Build APK and instrumentation
-        run: python3 android/build.py --test
+        run: |
+          python3 android/build.py --test
+          python3 android/build.py --dual-screen --test
       - name: Check JNI and cartridge output on host
         run: |
           cargo build --release --locked --manifest-path android/rust/Cargo.toml
@@ -57,7 +63,7 @@ jobs:
           sudo chmod a+rw /dev/kvm
           mkdir -p "$ANDROID_AVD_HOME"
           trap 'tail -80 target/android-build/emulator.log 2>/dev/null || true' EXIT
-          echo no | avdmanager create avd --force --name gba-test --path "$ANDROID_AVD_HOME/gba-test.avd" --package 'system-images;android-35;google_apis;x86_64' --device pixel_2
+          echo no | avdmanager create avd --force --name gba-test --path "$ANDROID_AVD_HOME/gba-test.avd" --package 'system-images;android-${{ matrix.api }};google_apis;x86_64' --device pixel_2
           test -f "$ANDROID_AVD_HOME/gba-test.ini"
           "$ANDROID_HOME/emulator/emulator" -avd gba-test -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect > target/android-build/emulator.log 2>&1 &
           timeout 180 adb wait-for-device
@@ -77,6 +83,19 @@ jobs:
           adb pull /sdcard/Download/android-smoke.png target/android-build/android-smoke.png
           cd target/android-build
           ../android-smoke/test-rom android-smoke.gba
+      - name: Exercise dual-screen previews and cartridge export
+        run: |
+          adb install dist/android-dual-screen/gba-image-packer-dual-1.0.0-alpha1-android.apk
+          adb install dist/android-dual-screen/dual-screen-instrumentation.apk
+          adb shell am instrument -w io.github.newbarktownkris.gbaimagepacker.dual.test/io.github.newbarktownkris.gbaimagepacker.dualtest.DualSmokeInstrumentation | tee target/android-build/dual-instrumentation.log
+          python3 -c 'from pathlib import Path; text=Path("target/android-build/dual-instrumentation.log").read_text(); assert "PASS: equal source/result panes" in text and "PASS: image URI import" in text'
+          adb pull /sdcard/Download/android-dual-smoke.gba target/android-build/android-dual-smoke.gba
+          adb pull /sdcard/Download/android-dual-smoke.png target/android-build/android-dual-smoke.png
+          adb pull /sdcard/Download/android-dual-secondary.png target/android-build/android-dual-secondary.png
+          adb pull /sdcard/Download/android-dual-portrait.png target/android-build/android-dual-portrait.png
+          adb pull /sdcard/Download/android-dual-controls.png target/android-build/android-dual-controls.png
+          cd target/android-build
+          ../android-smoke/test-rom android-dual-smoke.gba
       - name: Collect Android runtime log
         if: always()
         run: |
@@ -85,9 +104,10 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: android-verification
+          name: android-verification-api-${{ matrix.api }}
           path: |
             dist/android/*.apk
+            dist/android-dual-screen/*.apk
             target/android-build/*.log
-            target/android-build/android-smoke.gba
-            target/android-build/android-smoke.png
+            target/android-build/android-*.gba
+            target/android-build/android-*.png

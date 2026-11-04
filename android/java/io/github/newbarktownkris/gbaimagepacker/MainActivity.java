@@ -55,11 +55,17 @@ public class MainActivity extends Activity {
         albumDirectory = new File(getFilesDir(), "album");
         albumDirectory.mkdirs();
         buildInterface();
+        onInterfaceReady(content, preview);
         restoreAlbum();
         if (state != null && state.getString("pendingRom") != null)
             pendingRom = new File(state.getString("pendingRom"));
         refreshSelection();
     }
+
+    protected String applicationTitle() { return "GBA Image Packer"; }
+    protected void onInterfaceReady(LinearLayout container, ImageView imagePreview) { }
+    protected void onSelectedImagePreview(File source, Bitmap converted, String name, boolean ready) { }
+    protected final void refreshSelectedPreview() { showPreview(); }
 
     private int dp(int value) { return (int)(value * getResources().getDisplayMetrics().density + .5f); }
     private TextView text(String value, int size) {
@@ -94,7 +100,7 @@ public class MainActivity extends Activity {
             v.setPadding(insets.getSystemWindowInsetLeft(), insets.getSystemWindowInsetTop(),
                 insets.getSystemWindowInsetRight(), insets.getSystemWindowInsetBottom()); return insets;
         });
-        text("GBA Image Packer", 26);
+        text(applicationTitle(), 26);
         text("Turn your photos into a Game Boy Advance cartridge. Everything is processed on this device.", 15);
         button("Add images", this::chooseImages);
         count = text("No images yet", 14);
@@ -216,12 +222,13 @@ public class MainActivity extends Activity {
         if (previous != null && previous != bitmap) previous.recycle();
     }
     private void showPreview() {
-        if (selected < 0 || selected >= photos.size()) { display(null); return; }
+        if (selected < 0 || selected >= photos.size()) { display(null); onSelectedImagePreview(null, null, "", false); return; }
         Entry e = photos.get(selected);
         if (e.ready && e.frame.isFile()) {
             try { display(framePreview(e.frame)); }
             catch (IOException error) { e.ready = false; display(null); }
         } else display(null);
+        onSelectedImagePreview(e.source, currentPreview, e.name, e.ready);
         if (!e.ready) status.setText("Settings changed. Apply settings to update the preview, or build the ROM.");
     }
     private void process(Entry entry) { Native.process(entry.source.getAbsolutePath(), entry.settings.toString(), entry.frame.getAbsolutePath()); entry.ready = true; }

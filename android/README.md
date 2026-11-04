@@ -14,6 +14,10 @@ The album is saved automatically in the app's private storage. Imports are downs
 
 **Save included example ROM** exports the repository's ready-to-play sample cartridge. **Controls and licenses** contains GBA control instructions and dependency license texts.
 
+## Dual-screen edition
+
+A separate, co-installable [dual-screen alpha](dual-screen/README.md) shows an equal-width source/GBA-result comparison on a second Android display. It includes display selection and an inline fallback. Build it with `python3 android/build.py --dual-screen`; the ordinary APK remains a separate app.
+
 ## Build on Linux
 
 The build uses Android SDK tools directly, plus a small Java interface and a Rust JNI library. It does not require Gradle or Android Studio. Install Python 3, Rust, a C compiler, JDK 17 or later, and the [Android command-line tools](https://developer.android.com/studio#command-tools).

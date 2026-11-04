@@ -17,6 +17,7 @@ p.add_argument('--sdk', type=Path, default=os.environ.get('ANDROID_HOME') or os.
 p.add_argument('--ndk', type=Path, default=os.environ.get('ANDROID_NDK_HOME') or os.environ.get('ANDROID_NDK_ROOT'))
 p.add_argument('--java-home', type=Path, default=os.environ.get('JAVA_HOME'))
 p.add_argument('--test', action='store_true', help='Also build the emulator instrumentation APK')
+p.add_argument('--dual-screen', action='store_true', help='Build the separately installable dual-screen edition')
 args = p.parse_args()
 if not args.sdk or not args.ndk:
     p.error('Set ANDROID_HOME and ANDROID_NDK_HOME, or supply --sdk and --ndk')
@@ -34,8 +35,8 @@ android_jar = sdk / 'platforms' / 'android-36' / 'android.jar'
 ndk_bin = ndk / 'toolchains/llvm/prebuilt/linux-x86_64/bin'
 if not android_jar.is_file() or not (build_tools / 'aapt2').is_file() or not ndk_bin.is_dir():
     p.error('Requires Linux, Android platform 36, build-tools 36.0.0 and the Linux NDK')
-build = ROOT / 'target/android-build'
-dist = ROOT / 'dist/android'
+build = ROOT / ('target/android-dual-build' if args.dual_screen else 'target/android-build')
+dist = ROOT / ('dist/android-dual-screen' if args.dual_screen else 'dist/android')
 for directory in [build, dist]: directory.mkdir(parents=True, exist_ok=True)
 assets = build / 'assets'
 assets.mkdir(exist_ok=True)
@@ -110,10 +111,20 @@ def package(manifest_file, sources, name, extra_assets=None, native_libraries=()
     run(build_tools / 'zipalign', '-c', '-P', '16', '4', output)
     return output
 
-output = package(ROOT / 'android/AndroidManifest.xml', (ROOT / 'android/java').rglob('*.java'),
-    'gba-image-packer-1.0.0-android', assets, libraries)
-if args.test:
-    package(ROOT / 'android/test/AndroidManifest.xml', (ROOT / 'android/test/java').rglob('*.java'), 'android-instrumentation')
+sources = list((ROOT / 'android/java').rglob('*.java'))
+test_sources = list((ROOT / 'android/test/java').rglob('*.java'))
+if args.dual_screen:
+    sources += list((ROOT / 'android/dual-screen/java').rglob('*.java'))
+    output = package(ROOT / 'android/dual-screen/AndroidManifest.xml', sources,
+        'gba-image-packer-dual-1.0.0-alpha1-android', assets, libraries)
+    if args.test:
+        test_sources += list((ROOT / 'android/dual-screen/test/java').rglob('*.java'))
+        package(ROOT / 'android/dual-screen/test/AndroidManifest.xml', test_sources, 'dual-screen-instrumentation')
+else:
+    output = package(ROOT / 'android/AndroidManifest.xml', sources,
+        'gba-image-packer-1.0.0-android', assets, libraries)
+    if args.test:
+        package(ROOT / 'android/test/AndroidManifest.xml', test_sources, 'android-instrumentation')
 checksum = hashlib.sha256(output.read_bytes()).hexdigest()
 (output.with_suffix('.apk.sha256')).write_text(f'{checksum}  {output.name}\n', encoding='utf-8')
 print(f'APK: {output}')
