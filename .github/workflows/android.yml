@@ -1,0 +1,71 @@
+name: Android APK and device checks
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'android/**'
+      - 'src/model.rs'
+      - 'assets/viewer.bin'
+      - '.github/workflows/android.yml'
+  pull_request:
+    paths: ['android/**', 'src/model.rs', 'assets/viewer.bin', '.github/workflows/android.yml']
+permissions:
+  contents: read
+jobs:
+  android:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    env:
+      ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk/28.2.13676358
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Android tools
+        run: |
+          yes | sdkmanager --licenses > /dev/null || true
+          sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;28.2.13676358' 'emulator' 'system-images;android-35;google_apis;x86_64'
+          rustup target add aarch64-linux-android x86_64-linux-android
+          sudo apt-get update
+          sudo apt-get install -y libmgba-dev
+      - name: Build APK and instrumentation
+        run: python3 android/build.py --test
+      - name: Check JNI and cartridge output on host
+        run: |
+          cargo build --release --locked --manifest-path android/rust/Cargo.toml
+          mkdir -p target/android-smoke/classes
+          javac -d target/android-smoke/classes android/java/io/github/newbarktownkris/gbaimagepacker/Native.java android/test/CoreSmokeTest.java
+          java -Djava.library.path=android/rust/target/release -cp target/android-smoke/classes CoreSmokeTest target/android-smoke
+          cc firmware/test_rom.c -o target/android-smoke/test-rom -lmgba
+          cd target/android-smoke
+          ./test-rom android-jni.gba
+      - name: Boot Android emulator
+        run: |
+          sudo chmod a+rw /dev/kvm
+          echo no | avdmanager create avd --force --name gba-test --package 'system-images;android-35;google_apis;x86_64' --device pixel_2
+          "$ANDROID_HOME/emulator/emulator" -avd gba-test -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect > target/android-build/emulator.log 2>&1 &
+          adb wait-for-device
+          for attempt in $(seq 1 120); do
+            if [ "$(adb shell getprop sys.boot_completed | tr -d '\r')" = 1 ]; then exit 0; fi
+            sleep 3
+          done
+          exit 1
+      - name: Exercise Android app import, conversion, save and persistence
+        run: |
+          adb shell input keyevent 82
+          adb install dist/android/gba-image-packer-1.0.0-android.apk
+          adb install dist/android/android-instrumentation.apk
+          adb shell am instrument -w io.github.newbarktownkris.gbaimagepacker.test/.SmokeInstrumentation | tee target/android-build/instrumentation.log
+          python3 -c 'from pathlib import Path; assert "PASS:" in Path("target/android-build/instrumentation.log").read_text()'
+          adb pull /sdcard/Download/android-smoke.gba target/android-build/android-smoke.gba
+          adb pull /sdcard/Download/android-smoke.png target/android-build/android-smoke.png
+          cd target/android-build
+          ../android-smoke/test-rom android-smoke.gba
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-verification
+          path: |
+            dist/android/*.apk
+            target/android-build/*.log
+            target/android-build/android-smoke.gba
+            target/android-build/android-smoke.png

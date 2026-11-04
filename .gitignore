@@ -3,3 +3,5 @@
 *.sav
 firmware/viewer.elf
 __pycache__/
+/android/rust/target/
+/android/.signing/

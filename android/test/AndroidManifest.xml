@@ -1,0 +1,5 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="io.github.newbarktownkris.gbaimagepacker.test" android:versionCode="1" android:versionName="1.0">
+    <uses-sdk android:minSdkVersion="29" android:targetSdkVersion="36" />
+    <instrumentation android:name=".SmokeInstrumentation" android:targetPackage="io.github.newbarktownkris.gbaimagepacker" android:label="Android end to end verification" />
+    <application android:label="GBA Packer verification" />
+</manifest>
