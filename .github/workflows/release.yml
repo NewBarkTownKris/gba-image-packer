@@ -1,0 +1,81 @@
+name: Native builds
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            binary: gba-image-packer
+          - os: macos-15
+            target: aarch64-apple-darwin
+            binary: gba-image-packer
+          - os: windows-2022
+            target: x86_64-pc-windows-msvc
+            binary: gba-image-packer.exe
+    runs-on: ${{ matrix.os }}
+    env:
+      MACOSX_DEPLOYMENT_TARGET: '11.0'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libx11-dev libxi-dev libgl1-mesa-dev libasound2-dev xvfb libmgba-dev
+      - name: Install Rust target
+        run: rustup target add ${{ matrix.target }}
+      - name: Check formatting
+        run: cargo fmt --check
+      - name: Build
+        run: cargo build --release --locked --target ${{ matrix.target }}
+      - name: Test
+        run: cargo test --locked --target ${{ matrix.target }}
+      - name: Verify desktop and cartridge
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          mkdir -p target/verification
+          xvfb-run -a target/${{ matrix.target }}/release/gba-image-packer --self-test target/verification/self-test.json --screenshot target/verification/app.png
+          python3 -c 'import json; assert all(s["passed"] for s in json.load(open("target/verification/self-test.json"))["steps"])'
+          cc firmware/test_rom.c -o target/verification/test-rom -lmgba
+          cd target/verification
+          ./test-rom self-test.GBA
+      - name: Fetch license sources
+        run: cargo fetch --locked
+      - name: Package
+        run: python scripts/package.py --target ${{ matrix.target }} --binary target/${{ matrix.target }}/release/${{ matrix.binary }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}
+          path: |
+            dist/*.zip
+            dist/*.tar.gz
+          if-no-files-found: error
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          cd artifacts
+          sha256sum *.zip *.tar.gz > SHA256SUMS.txt
+          gh release create "$TAG" *.zip *.tar.gz SHA256SUMS.txt --verify-tag --title "GBA Image Packer $TAG" --notes "Native builds for Linux x86_64, macOS Apple Silicon and Windows x86_64. Each archive includes the example GBA ROM, documentation and dependency licenses."

@@ -1,0 +1,5 @@
+/target/
+/dist/
+*.sav
+firmware/viewer.elf
+__pycache__/
