@@ -18,6 +18,8 @@ jobs:
     timeout-minutes: 30
     env:
       ANDROID_HOME: ${{ github.workspace }}/target/android-sdk
+      ANDROID_USER_HOME: ${{ github.workspace }}/target/android-user
+      ANDROID_AVD_HOME: ${{ github.workspace }}/target/android-user/avd
       ANDROID_NDK_HOME: ${{ github.workspace }}/target/android-sdk/ndk/28.2.13676358
     steps:
       - uses: actions/checkout@v4
@@ -53,9 +55,12 @@ jobs:
       - name: Boot Android emulator
         run: |
           sudo chmod a+rw /dev/kvm
-          echo no | avdmanager create avd --force --name gba-test --package 'system-images;android-35;google_apis;x86_64' --device pixel_2
+          mkdir -p "$ANDROID_AVD_HOME"
+          trap 'tail -80 target/android-build/emulator.log 2>/dev/null || true' EXIT
+          echo no | avdmanager create avd --force --name gba-test --path "$ANDROID_AVD_HOME/gba-test.avd" --package 'system-images;android-35;google_apis;x86_64' --device pixel_2
+          test -f "$ANDROID_AVD_HOME/gba-test.ini"
           "$ANDROID_HOME/emulator/emulator" -avd gba-test -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect > target/android-build/emulator.log 2>&1 &
-          adb wait-for-device
+          timeout 180 adb wait-for-device
           for attempt in $(seq 1 120); do
             if [ "$(adb shell getprop sys.boot_completed | tr -d '\r')" = 1 ]; then exit 0; fi
             sleep 3
@@ -72,6 +77,11 @@ jobs:
           adb pull /sdcard/Download/android-smoke.png target/android-build/android-smoke.png
           cd target/android-build
           ../android-smoke/test-rom android-smoke.gba
+      - name: Collect Android runtime log
+        if: always()
+        run: |
+          mkdir -p target/android-build
+          timeout 15 adb logcat -d > target/android-build/logcat.log 2>&1 || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
