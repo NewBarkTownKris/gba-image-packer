@@ -10,6 +10,10 @@ Download a package for Linux x86_64, macOS Apple Silicon, Windows x86_64, or And
 
 <img src="docs/screenshots/linux-app.png" alt="GBA Image Packer running on Linux with source and converted image previews" width="900">
 
+**GBA ROM launch screens** — startup controls and the image-selection menu, captured in mGBA.
+
+<img src="docs/screenshots/gba-rom-startup-mgba.png" alt="GBA ROM startup controls screen captured in mGBA" width="360"> <img src="docs/screenshots/gba-rom-menu-mgba.png" alt="GBA ROM launch menu showing image selection and slideshow controls in mGBA" width="360">
+
 **Generated GBA ROM in mGBA** — the included `example.gba`, captured at the GBA's native 240 × 160 resolution.
 
 <img src="docs/screenshots/gba-rom-mgba.png" alt="A photo of a rainbow displayed by the example GBA ROM running in mGBA" width="480">
