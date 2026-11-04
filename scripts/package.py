@@ -87,7 +87,8 @@ if 'linux' in args.target:
         f.add(stage, arcname=name)
 else:
     archive = dist / (name + '.zip')
-    with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as f:
+    # Crate archives may use Unix epoch timestamps; ZIP starts in 1980.
+    with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED, strict_timestamps=False) as f:
         for path in sorted(stage.rglob('*')):
             if path.is_file():
                 f.write(path, arcname=str(path.relative_to(dist)))
