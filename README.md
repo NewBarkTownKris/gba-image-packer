@@ -19,6 +19,12 @@ The Windows package supports **64-bit Windows 10 and Windows 11 on x86_64 PCs**.
 
 Use your graphics hardware's Windows driver with OpenGL support. No separate file-dialog package is required on Windows.
 
+### Windows XP (separate alpha)
+
+An independent [native Windows XP edition](legacy-xp/README.md) targets **Windows XP SP3 32-bit**, an **SSE2-capable processor** (Pentium 4/Athlon 64 or newer), and a **1024 × 768** desktop. Download the package ending in `windows-xp-x86.zip`, extract it, and launch `gba-image-packer-xp.exe`. No Rust, .NET, OpenGL or modern Visual C++ runtime installation is required.
+
+This alpha uses C++/Win32 and Windows' built-in GDI+ codecs. Its import audit, Wine XP-mode conversion checks and generated-ROM playback checks passed. Original Windows XP hardware or VM testing remains outstanding. See its instructions for the initial feature differences from the Rust edition.
+
 ### macOS (Apple Silicon)
 
 The macOS package requires **macOS 11 Big Sur or later on an Apple Silicon Mac** (M-series processor). This download does not include an Intel Mac build.
